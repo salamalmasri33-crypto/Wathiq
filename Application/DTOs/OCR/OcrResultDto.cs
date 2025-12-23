@@ -1,4 +1,4 @@
-﻿namespace eArchiveSystem.Application.DTOs
+﻿namespace eArchiveSystem.Application.DTOs.OCR
 {
     public class OcrResultDto
     {

@@ -1,4 +1,5 @@
 ﻿using eArchiveSystem.Application.DTOs;
+using eArchiveSystem.Application.DTOs.OCR;
 using eArchiveSystem.Application.Interfaces.OCR;
 using eArchiveSystem.Application.Interfaces.Services;
 
