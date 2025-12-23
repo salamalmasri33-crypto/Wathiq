@@ -1,23 +1,24 @@
-﻿using System.Text;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http.Features;
+﻿using eArchiveSystem.Application.DTOs;
+using eArchiveSystem.Application.Interfaces.OCR;
+using eArchiveSystem.Application.Interfaces.Persistence;
+using eArchiveSystem.Application.Interfaces.Security;
+using eArchiveSystem.Application.Interfaces.Services;
+using eArchiveSystem.Application.Services;
+using eArchiveSystem.Domain.Models;
+using eArchiveSystem.Infrastructure.OCR;
+using eArchiveSystem.Infrastructure.Persistence.Data;
+using eArchiveSystem.Infrastructure.Persistence.Repositories;
+using eArchiveSystem.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 using QuestPDF.Infrastructure;
-using eArchiveSystem.Infrastructure.Persistence.Data;
-using eArchiveSystem.Infrastructure.Persistence.Repositories;
-using eArchiveSystem.Infrastructure.Security;
-
-using eArchiveSystem.Domain.Models;
-
-using eArchiveSystem.Application.Interfaces.Persistence;
-using eArchiveSystem.Application.Interfaces.Security;
-using eArchiveSystem.Application.Interfaces.Services;
-using eArchiveSystem.Application.Services;
+using System.Text;
 
 // =======================================================
 // 1) Create Builder
@@ -92,6 +93,11 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IAuditRepository, AuditRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+// OCR
+builder.Services.AddScoped<IOcrStrategy, TesseractOcrStrategy>();
+builder.Services.AddScoped<IOcrService, OcrService>();
+
 
 
 // IMPORTANT: enable QuestPDF free license
