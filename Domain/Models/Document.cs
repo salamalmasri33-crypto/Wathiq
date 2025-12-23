@@ -5,33 +5,31 @@ namespace eArchiveSystem.Domain.Models
 {
     public class Document
     {
-        // نستخدم Id لـ MongoDB، و DocumentId منطقي داخلي للنظام (لو حبيت)
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
         public int DocumentId { get; set; }          // من ال Class Diagram
         public string Title { get; set; }            // title
-        public string Content { get; set; }          // ممكن نخزن النص المستخرج لاحقاً (OCR)
+
+        public string? Content { get; set; }         //  OCR Text (nullable)
+        public string FilePath { get; set; }         //  مسار الملف على السيرفر
+
         public string FileName { get; set; }         // اسم الملف الأصلي
-        public string ContentType { get; set; }      // مثلاً application/pdf
+        public string ContentType { get; set; }      // application/pdf
         public long Size { get; set; }               // الحجم بالبايت
 
-        public string FileHash { get; set; }         // لهدف Duplication Handling
+        public string FileHash { get; set; }         // Duplication Handling
 
-        public DateTime CreatedAt { get; set; }      // createdAt
-        public DateTime UpdatedAt { get; set; }      // updatedAt
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
-        public string UserId { get; set; }           // userId = صاحب الوثيقة
+        public string UserId { get; set; }           // صاحب الوثيقة
+        public string Department { get; set; }
 
         public Metadata? Metadata { get; set; }
-        public string Department { get; set; }
-       
+
         [BsonIgnore]
         public string? OwnerName { get; set; }
-
-
-
     }
-
 }
