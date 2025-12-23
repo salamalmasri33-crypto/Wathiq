@@ -5,6 +5,7 @@ using eArchiveSystem.Application.Interfaces.Security;
 using eArchiveSystem.Application.Interfaces.Services;
 using eArchiveSystem.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
+using SharpCompress.Common;
 
 namespace eArchiveSystem.Application.Services
 {
@@ -16,13 +17,16 @@ namespace eArchiveSystem.Application.Services
         private readonly IUserRepository _users;
         private readonly IMetadataRepository _metadata;
         private readonly IAuditService _audit;
+        private readonly IOcrService _ocrService;
+
 
         public DocumentService(IDocumentRepository documents,
                                IFileHashCalculator hashCalculator,
                                IStorageService storage,
                                IUserRepository users,
                                IMetadataRepository metadata,
-                               IAuditService audit)
+                               IAuditService audit,
+                               IOcrService ocrService)
         {
             _documents = documents;
             _hashCalculator = hashCalculator;
@@ -30,6 +34,7 @@ namespace eArchiveSystem.Application.Services
             _users = users;
             _metadata = metadata;
             _audit = audit;
+            _ocrService = ocrService; 
         }
         // ==================================================
         // 🔐 ROLE PERMISSIONS
@@ -110,6 +115,13 @@ namespace eArchiveSystem.Application.Services
                 UserId = userId,
                 Department = user.Department
             };
+
+            if (dto.EnableOcr)
+            {
+                var ocrResult = await _ocrService.ExtractTextAsync(savedPath, "ara+eng");
+                doc.Content = ocrResult.Text;
+            }
+
 
             await _documents.CreateAsync(doc);
 
