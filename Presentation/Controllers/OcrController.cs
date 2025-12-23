@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace eArchiveSystem.Presentation.Controllers
 {
     [ApiController]
-    [Route("api/ocr")]
+    [Route("api/ocr")] 
     public class OcrController : ControllerBase
     {
         private readonly IOcrService _ocrService;

@@ -101,15 +101,16 @@ namespace eArchiveSystem.Application.Services
             }
 
             var savedPath = await _storage.SaveFileAsync(dto.File, "uploads");
-
+            string? extractedText = null;
             var doc = new Document
-            {
+            { 
                 Title = string.IsNullOrWhiteSpace(dto.Title) ? dto.File.FileName : dto.Title,
                 FileName = dto.File.FileName,
                 ContentType = dto.File.ContentType,
                 Size = dto.File.Length,
                 FileHash = fileHash,
-                Content = savedPath,
+                FilePath = savedPath,
+                Content = extractedText,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 UserId = userId,
@@ -196,7 +197,7 @@ namespace eArchiveSystem.Application.Services
             if (!CanDownload(doc, userId, role))
                 return null;
 
-            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), doc.Content);
+            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), doc.FilePath);
 
             if (!File.Exists(fullPath))
                 return null;
@@ -245,7 +246,7 @@ namespace eArchiveSystem.Application.Services
                     };
                 }
 
-                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), doc.Content);
+                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), doc.FilePath);
                 if (File.Exists(oldPath)) File.Delete(oldPath);
 
                 var newPath = await _storage.SaveFileAsync(dto.File, "uploads");
@@ -254,7 +255,7 @@ namespace eArchiveSystem.Application.Services
                 doc.ContentType = dto.File.ContentType;
                 doc.Size = dto.File.Length;
                 doc.FileHash = newHash;
-                doc.Content = newPath;
+                doc.FilePath = newPath;
             }
 
             doc.UpdatedAt = DateTime.UtcNow;
@@ -285,7 +286,7 @@ namespace eArchiveSystem.Application.Services
             if (!CanDelete(doc, userId, role))
                 return false;
 
-            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), doc.Content);
+            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), doc.FilePath);
             if (File.Exists(fullPath))
                 File.Delete(fullPath);
 
