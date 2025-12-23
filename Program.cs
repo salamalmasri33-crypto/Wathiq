@@ -97,7 +97,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 // OCR
 builder.Services.AddScoped<IOcrStrategy, TesseractOcrStrategy>();
 builder.Services.AddScoped<IOcrService, OcrService>();
-
+builder.Services.AddScoped<IPdfToImageService, PdfToImageService>();
 
 
 // IMPORTANT: enable QuestPDF free license
