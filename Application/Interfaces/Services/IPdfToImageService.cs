@@ -2,5 +2,6 @@
 {
     public interface IPdfToImageService
     {
+        List<string> ConvertToImages(string pdfPath);
     }
 }
