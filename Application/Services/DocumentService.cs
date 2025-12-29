@@ -5,7 +5,10 @@ using eArchiveSystem.Application.Interfaces.Security;
 using eArchiveSystem.Application.Interfaces.Services;
 using eArchiveSystem.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using SharpCompress.Common;
+using System.Net.Http;
+using System.Net.Http.Json;
 
 namespace eArchiveSystem.Application.Services
 {
@@ -17,7 +20,9 @@ namespace eArchiveSystem.Application.Services
         private readonly IUserRepository _users;
         private readonly IMetadataRepository _metadata;
         private readonly IAuditService _audit;
-        private readonly IOcrService _ocrService;
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _config;
+
 
 
         public DocumentService(IDocumentRepository documents,
@@ -26,7 +31,8 @@ namespace eArchiveSystem.Application.Services
                                IUserRepository users,
                                IMetadataRepository metadata,
                                IAuditService audit,
-                               IOcrService ocrService)
+                                HttpClient httpClient,
+                                IConfiguration config)
         {
             _documents = documents;
             _hashCalculator = hashCalculator;
@@ -34,10 +40,11 @@ namespace eArchiveSystem.Application.Services
             _users = users;
             _metadata = metadata;
             _audit = audit;
-            _ocrService = ocrService; 
+            _httpClient = httpClient;
+            _config = config;
         }
         // ==================================================
-        // 🔐 ROLE PERMISSIONS
+        //  ROLE PERMISSIONS
         // ==================================================
 
         private bool CanAdd(string role)
@@ -77,6 +84,8 @@ namespace eArchiveSystem.Application.Services
         // 📌 ADD DOCUMENT
         // ==================================================
 
+
+        // Upload + Save file + OCR trigger 
         public async Task<DocumentAddResult> AddDocumentAsync(string userId, AddDocumentDto dto)
         {
             var user = await _users.GetByIdAsync(userId);
@@ -87,6 +96,7 @@ namespace eArchiveSystem.Application.Services
             if (dto.File == null)
                 throw new Exception("File is required");
 
+            // Duplicate check
             var fileHash = await _hashCalculator.ComputeHashAsync(dto.File);
             var existing = await _documents.GetByHashAsync(fileHash);
 
@@ -100,53 +110,112 @@ namespace eArchiveSystem.Application.Services
                 };
             }
 
+            // Save file
             var savedPath = await _storage.SaveFileAsync(dto.File, "uploads");
-            string? extractedText = null;
+
             var doc = new Document
-            { 
-                Title = string.IsNullOrWhiteSpace(dto.Title) ? dto.File.FileName : dto.Title,
+            {
+                Title = string.IsNullOrWhiteSpace(dto.Title)
+                    ? dto.File.FileName
+                    : dto.Title,
+
                 FileName = dto.File.FileName,
+                FilePath = savedPath,          // المسار
                 ContentType = dto.File.ContentType,
                 Size = dto.File.Length,
                 FileHash = fileHash,
-                FilePath = savedPath,
-                Content = extractedText,
+
+                Content = null,                // OCR later
+                UserId = userId,
+                Department = user.Department,
+
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                UserId = userId,
-                Department = user.Department
-            };
 
-            if (dto.EnableOcr)
+                  
+            };
+          
+            await _documents.CreateAsync(doc);
+          
+            if (!System.IO.File.Exists(savedPath))
+                throw new Exception("Saved PDF not found");
+
+            // Trigger OCR (async)
+            try
             {
-                var ocrResult = await _ocrService.ExtractTextAsync(savedPath, "ara+eng");
-                doc.Content = ocrResult.Text;
+                await _httpClient.PostAsJsonAsync(
+                    $"{_config["OcrService:BaseUrl"]}/api/ocr/process",
+                    new
+                    {
+                        documentId = doc.Id,
+                        filePath = savedPath,
+                        callbackUrl = $"{_config["App:BaseUrl"]}/api/ocr/callback?documentId={doc.Id}"
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(" OCR CALL FAILED: " + ex.Message);
+                // لا ترجع Error – الوثيقة انحفظت
             }
 
 
-            await _documents.CreateAsync(doc);
 
-            await _audit.LogAsync(userId, user.Role, "AddDocument", doc.Id,
-                $"User {userId} added document '{doc.Title}'");
+            // Audit log
+            await _audit.LogAsync(
+                userId,
+                user.Role,
+                "AddDocument",
+                doc.Id,
+                $"User {userId} uploaded document '{doc.Title}'"
+            );
 
             return new DocumentAddResult
             {
                 IsDuplicate = false,
                 Document = doc,
-                Message = "Document added successfully"
+                Message = "Uploaded successfully"
             };
         }
+        // ===============================
+        // GET DOCUMENT
+        // ===============================
 
+
+        // Get document + metadata
         public async Task<Document?> GetByIdAsync(string id)
         {
-            return await _documents.GetByIdAsync(id);
+            var doc = await _documents.GetByIdAsync(id);
+            if (doc == null)
+                return null;
+
+            var meta = await _metadata.GetByDocumentIdAsync(id);
+            doc.Metadata = meta;
+
+            return doc;
+
+
         }
+
+        public async Task AttachMetadataAsync(string documentId)
+        {
+            var metadata = await _metadata.GetByDocumentIdAsync(documentId);
+            if (metadata == null)
+                return;
+
+            await _documents.UpdateMetadataFieldsAsync(documentId, metadata);
+        }
+
+
+
 
 
         // ==================================================
         // 📌 VIEW DOCUMENT
         // ==================================================
 
+
+        // View with permission + audit
         public async Task<DocumentViewDto?> ViewDocumentAsync(string id, string userId, string role, string? dept)
         {
             var doc = await _documents.GetByIdAsync(id);
@@ -156,9 +225,6 @@ namespace eArchiveSystem.Application.Services
             if (!CanView(doc, userId, role))
                 return null;
 
-            await _audit.LogAsync(userId, role, "ViewDocument", id,
-                $"User {userId} viewed document {id}");
-
             var owner = await _users.GetByIdAsync(doc.UserId);
             doc.OwnerName = owner?.Name;   // اسم المستخدم
             await _audit.LogAsync(
@@ -166,7 +232,7 @@ namespace eArchiveSystem.Application.Services
                 role,
                 "ViewDocument",
                 id,
-                $"User {userId} viewed document {id}" 
+                $"User {userId} viewed document {id}"
             );
             return new DocumentViewDto
             {
@@ -186,6 +252,10 @@ namespace eArchiveSystem.Application.Services
         // ==================================================
         // 📌 DOWNLOAD DOCUMENT
         // ==================================================
+
+
+
+        // Download with permission
 
         public async Task<(Stream FileStream, string FileName, string ContentType)?>
             DownloadDocumentAsync(string id, string userId, string role, string? dept)
@@ -214,6 +284,7 @@ namespace eArchiveSystem.Application.Services
         // 📌 UPDATE DOCUMENT
         // ==================================================
 
+        // Update metadata / file
         public async Task<DocumentUpdateResult> UpdateDocumentAsync(
             string documentId,
             UpdateDocumentDto dto,
@@ -245,7 +316,7 @@ namespace eArchiveSystem.Application.Services
                         Message = "Duplicate file detected"
                     };
                 }
-
+                // Replace file
                 var oldPath = Path.Combine(Directory.GetCurrentDirectory(), doc.FilePath);
                 if (File.Exists(oldPath)) File.Delete(oldPath);
 
@@ -277,27 +348,49 @@ namespace eArchiveSystem.Application.Services
         // 📌 DELETE DOCUMENT
         // ==================================================
 
+
+        // Delete file + metadata + document
         public async Task<bool> DeleteDocumentAsync(string id, string userId, string role)
         {
+            // 1️⃣ جلب الوثيقة
             var doc = await _documents.GetByIdAsync(id);
             if (doc == null)
                 return false;
 
+            // 2️⃣ التحقق من الصلاحيات
             if (!CanDelete(doc, userId, role))
                 return false;
 
-            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), doc.FilePath);
+            // 3️⃣ حذف الملف من التخزين
+            var fullPath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                doc.FilePath
+            );
+
             if (File.Exists(fullPath))
                 File.Delete(fullPath);
 
-            await _metadata.DeleteAsync(id);
+            // 4️⃣ حذف Metadata (مرة واحدة فقط)
+            // بما أن metadata._id == document._id
+            await _metadata.DeleteByDocumentIdAsync(doc.Id);
 
-            var result = await _documents.DeleteAsync(id);
+            // 5️⃣ حذف Document
+            var deleted = await _documents.DeleteAsync(doc.Id);
+            if (!deleted)
+                return false;
 
-            await _audit.LogAsync(userId, role, "DeleteDocument", id,
-                $"User {userId} deleted document '{doc.Title}'");
+            // 6️⃣ تسجيل العملية في Audit Log
+            await _audit.LogAsync(
+                userId,
+                role,
+                "DeleteDocument",
+                doc.Id,
+                $"User {userId} deleted document '{doc.Title}'"
+            );
 
-            return result;
+            return true;
         }
+
+
     }
 }

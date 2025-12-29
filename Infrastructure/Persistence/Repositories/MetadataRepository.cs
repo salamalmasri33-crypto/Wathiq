@@ -4,40 +4,42 @@ using MongoDB.Driver;
 
 namespace eArchiveSystem.Infrastructure.Persistence.Repositories
 {
-        public class MetadataRepository : IMetadataRepository
+    public class MetadataRepository : IMetadataRepository
+    {
+        private readonly IMongoCollection<Metadata> _metadata;
+
+        public MetadataRepository(IMongoDatabase database)
         {
-            private readonly IMongoCollection<Metadata> _metadata;
+            _metadata = database.GetCollection<Metadata>("Metadata");
+        }
 
-            public MetadataRepository(IMongoDatabase database)
-            {
-                _metadata = database.GetCollection<Metadata>("Metadata");
-            }
-
-            public async Task AddAsync(Metadata metadata)
-            {
-                await _metadata.InsertOneAsync(metadata);
-            }
-
-            public async Task<Metadata?> GetByDocumentIdAsync(string documentId)
-            {
-                return await _metadata.Find(x => x.Id == documentId)
-                                      .FirstOrDefaultAsync();
-            }
-
-            public async Task UpdateAsync(string id, Metadata metadata)
-            {
-                
-                await _metadata.ReplaceOneAsync(x => x.Id == id, metadata);
-            }
-        public async Task<bool> DeleteAsync(string id)
+        
+        /// Insert or Update metadata (Id = DocumentId)
+        public async Task UpsertAsync(Metadata metadata)
         {
-            var result = await _metadata.DeleteOneAsync(x => x.Id == id);
+            var filter = Builders<Metadata>.Filter.Eq(m => m.Id, metadata.Id);
+
+            await _metadata.ReplaceOneAsync(
+                filter,
+                metadata,
+                new ReplaceOptions { IsUpsert = true }
+            );
+        }
+
+       
+        /// Get metadata by DocumentId
+        public async Task<Metadata?> GetByDocumentIdAsync(string documentId)
+        {
+            return await _metadata
+                .Find(m => m.Id == documentId)
+                .FirstOrDefaultAsync();
+        }
+
+        /// Delete metadata by DocumentId
+        public async Task<bool> DeleteByDocumentIdAsync(string documentId)
+        {
+            var result = await _metadata.DeleteOneAsync(m => m.Id == documentId);
             return result.DeletedCount > 0;
         }
-       
-
     }
 }
-
-
-
