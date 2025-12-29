@@ -4,7 +4,7 @@ using eArchiveSystem.Application.Interfaces.Services;
 using eArchiveSystem.Domain.Models;
 
 namespace eArchiveSystem.Application.Services
-{
+{ 
     public class MetadataService : IMetadataService
     {
         private readonly IDocumentRepository _documents;
@@ -35,6 +35,7 @@ namespace eArchiveSystem.Application.Services
             return false;
         }
 
+        // صلاحية العرض
         private bool CanView(Document doc, string userId, string role)
         {
             if (role == "Admin" || role == "Manager")
@@ -49,8 +50,12 @@ namespace eArchiveSystem.Application.Services
         // ---------------------------------------
         // ADD METADATA
         // ---------------------------------------
+
+        // إضافة Metadata لأول مرة
         public async Task<bool> AddMetadataAsync(string documentId, AddMetadataDto dto, string userId, string role)
         {
+
+            // 1) جلب الوثيقة
             var doc = await _documents.GetByIdAsync(documentId);
             if (doc == null)
                 return false;
@@ -58,6 +63,7 @@ namespace eArchiveSystem.Application.Services
             if (!CanEdit(doc, userId, role))
                 return false;
 
+            // 2) إنشاء Metadata
             var meta = new Metadata
             {
                 Id = documentId,
@@ -70,12 +76,16 @@ namespace eArchiveSystem.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _metadata.AddAsync(meta);
+            // 3) حفظ Metadata
+            await _metadata.UpsertAsync(meta);
+
+            // 4) ربطها مع Document
             doc.Metadata = meta;
             doc.UpdatedAt = DateTime.UtcNow;
             await _documents.UpdateAsync(doc.Id, doc);
 
-            // 🔥 سجل عملية الإضافة
+
+            // 5) Audit
             await _audit.LogAsync(
                 userId,
                 role,
@@ -90,8 +100,12 @@ namespace eArchiveSystem.Application.Services
         // ---------------------------------------
         // VIEW METADATA
         // ---------------------------------------
+
+        // عرض Metadata
         public async Task<Metadata?> ViewMetadataAsync(string documentId, string userId, string role)
         {
+
+            // 1) جلب الوثيقة
             var doc = await _documents.GetByIdAsync(documentId);
             if (doc == null)
                 return null;
@@ -99,9 +113,11 @@ namespace eArchiveSystem.Application.Services
             if (!CanView(doc, userId, role))
                 return null;
 
+
+            // 2) جلب Metadata
             var meta = await _metadata.GetByDocumentIdAsync(documentId);
 
-            // 🔥 سجل العرض
+            // 3) Audit
             await _audit.LogAsync(
                 userId,
                 role,
@@ -116,8 +132,12 @@ namespace eArchiveSystem.Application.Services
         // ---------------------------------------
         // UPDATE METADATA
         // ---------------------------------------
+
+        // تعديل Metadata (أو إنشاؤها إن لم تكن موجودة)
         public async Task<bool> UpdateMetadataAsync(string documentId, AddMetadataDto dto, string userId, string role)
         {
+
+            // 1) جلب الوثيقة
             var doc = await _documents.GetByIdAsync(documentId);
             if (doc == null)
                 return false;
@@ -125,7 +145,12 @@ namespace eArchiveSystem.Application.Services
             if (!CanEdit(doc, userId, role))
                 return false;
 
+            // 2) جلب Metadata الحالية
             var existing = await _metadata.GetByDocumentIdAsync(documentId);
+
+            // ----------------------------------
+            // CASE 1: Metadata غير موجودة
+            // ----------------------------------
 
             if (existing == null)
             {
@@ -142,7 +167,7 @@ namespace eArchiveSystem.Application.Services
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                await _metadata.AddAsync(meta);
+                await _metadata.UpsertAsync(meta);
 
                 doc.Metadata = meta;
                 doc.UpdatedAt = DateTime.UtcNow;
@@ -161,7 +186,9 @@ namespace eArchiveSystem.Application.Services
                 return true;
             }
 
-            // تعديل موجود سابقاً
+            // ----------------------------------
+            // CASE 2: Metadata موجودة → تعديل
+            // ----------------------------------
             existing.Description = dto.Description;
             existing.Category = dto.Category;
             existing.Tags = dto.Tags;
@@ -170,7 +197,7 @@ namespace eArchiveSystem.Application.Services
             existing.ExpirationDate = dto.ExpirationDate;
             existing.UpdatedAt = DateTime.UtcNow;
 
-            await _metadata.UpdateAsync(existing.Id, existing);
+            await _metadata.UpsertAsync(existing);
 
             doc.Metadata = existing;
             doc.UpdatedAt = DateTime.UtcNow;
@@ -178,7 +205,7 @@ namespace eArchiveSystem.Application.Services
 
             await _documents.UpdateAsync(doc.Id, doc);
 
-            // 🔥 سجل التعديل
+            //  Audit
             await _audit.LogAsync(
                 userId,
                 role,

@@ -8,58 +8,163 @@ namespace eArchiveSystem.Infrastructure.Persistence.Repositories
 {
     public class DocumentRepository : IDocumentRepository
     {
+        // Collection الأساسية للوثائق
         private readonly IMongoCollection<Document> _documents;
+        // Collection الخاصة بالـ Metadata (مستقلة)
+        private readonly IMongoCollection<Metadata> _metadata;
 
         public DocumentRepository(IMongoDatabase database)
         {
             _documents = database.GetCollection<Document>("Documents");
+            _metadata = database.GetCollection<Metadata>("Metadata");
         }
 
-        public async Task<Document> GetByHashAsync(string fileHash) =>
-            await _documents.Find(d => d.FileHash == fileHash).FirstOrDefaultAsync();
-
-        public async Task CreateAsync(Document document) =>
-            await _documents.InsertOneAsync(document);
-
-        public async Task<List<Document>> GetByUserAsync(string userId) =>
-            await _documents.Find(d => d.UserId == userId).ToListAsync();
-        public async Task UpdateAsync(string id, Document document)
+        // =========================================================
+        // CREATE
+        // =========================================================
+        public async Task CreateAsync(Document document)
         {
-            var filter = Builders<Document>.Filter.Eq(d => d.Id, id);
-            await _documents.ReplaceOneAsync(filter, document);
+            await _documents.InsertOneAsync(document);
         }
+
+        // =========================================================
+        // GET
+        // =========================================================
         public async Task<Document?> GetByIdAsync(string id)
         {
-            var filter = Builders<Document>.Filter.Eq(d => d.Id, id);
-            return await _documents.Find(filter).FirstOrDefaultAsync();
+            return await _documents
+                .Find(d => d.Id == id)
+                .FirstOrDefaultAsync();
         }
+
+        public async Task<Document> GetByHashAsync(string fileHash)
+        {
+            return await _documents
+                .Find(d => d.FileHash == fileHash)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<Document>> GetByUserAsync(string userId)
+        {
+            return await _documents
+                .Find(d => d.UserId == userId)
+                .ToListAsync();
+        }
+
+        public async Task<List<Document>> GetAllAsync()
+        {
+            return await _documents
+                .Find(_ => true)
+                .ToListAsync();
+        }
+
+        // =========================================================
+        // UPDATE (FULL) استخدمها فقط عندما تكون الوثيقة كاملة
+        // =========================================================
+        public async Task UpdateAsync(string id, Document document)
+        {
+            
+            // هذه الدالة تستبدل الوثيقة بالكامل
+            // لا تستخدمها بعد OCR أو بعد AttachMetadataAsync
+            await _documents.ReplaceOneAsync(
+                d => d.Id == id,
+                document
+            );
+        }
+
+        // =========================================================
+        // UPDATE (PARTIAL) – OCR Content فقط
+        // =========================================================
+        public async Task UpdateContentAsync(
+            string documentId,
+            string content,
+            string department
+        )
+        {
+            var update = Builders<Document>.Update
+                .Set(d => d.Content, content)
+                .Set(d => d.Department, department)
+                .Set(d => d.UpdatedAt, DateTime.UtcNow);
+
+            await _documents.UpdateOneAsync(
+                d => d.Id == documentId,
+                update
+            );
+        }
+
+        // =========================================================
+        // METADATA – Embed كامل داخل Document
+        // =========================================================
+        public async Task AttachMetadataAsync(string documentId)
+        {
+            // نجلب الميتاداتا من collection الخاصة بها
+            var metadata = await _metadata
+                .Find(m => m.Id == documentId)
+                .FirstOrDefaultAsync();
+
+            if (metadata == null)
+                return;
+
+            var update = Builders<Document>.Update
+                .Set(d => d.Metadata, metadata)
+                .Set(d => d.UpdatedAt, DateTime.UtcNow);
+
+            await _documents.UpdateOneAsync(
+                d => d.Id == documentId,
+                update
+            );
+        }
+
+        // =========================================================
+        // METADATA – Update الحقول فقط (بدون استبدال)
+        // =========================================================
+        public async Task UpdateMetadataFieldsAsync(
+            string documentId,
+            Metadata metadata
+        )
+        {
+            var update = Builders<Document>.Update
+                .Set("Metadata.Description", metadata.Description)
+                .Set("Metadata.Category", metadata.Category)
+                .Set("Metadata.DocumentType", metadata.DocumentType)
+                .Set("Metadata.Tags", metadata.Tags)
+                .Set("Metadata.Department", metadata.Department)
+                .Set("Metadata.ExpirationDate", metadata.ExpirationDate)
+                .Set("Metadata.CreatedAt", metadata.CreatedAt)
+                .Set("Metadata.UpdatedAt", metadata.UpdatedAt)
+                .Set(d => d.UpdatedAt, DateTime.UtcNow);
+
+            await _documents.UpdateOneAsync(
+                d => d.Id == documentId,
+                update
+            );
+        }
+
+        // =========================================================
+        // DELETE
+        // =========================================================
+        public async Task<bool> DeleteAsync(string id)
+        {
+            var result = await _documents.DeleteOneAsync(d => d.Id == id);
+            return result.DeletedCount > 0;
+        }
+
+        // =========================================================
+        // SEARCH (كما هو – بدون تغيير)
+        // =========================================================
         public async Task<List<Document>> SearchAsync(
-     SearchDocumentsDto dto,
-     string userId,
-     string role)
+            SearchDocumentsDto dto,
+            string userId,
+            string role
+        )
         {
             var filters = new List<FilterDefinition<Document>>();
 
-            // ==========================================
-            // 1) Access Filter (صلاحيات الوصول)
-            // ==========================================
-
             if (role == "User")
-            {
-                // 👤 User يرى فقط وثائقه
                 filters.Add(Builders<Document>.Filter.Eq(d => d.UserId, userId));
-            }
-
-            // Manager + Admin يشوفوا كل الوثائق… لا نضيف أي فلتر هنا
-
-
-            // ==========================================
-            // 2) Text Search (يعمل فقط إذا Query ليست فارغة)
-            // ==========================================
 
             if (!string.IsNullOrEmpty(dto.Query))
             {
-                // نعمل Regex Search على الحقول النصية
                 var text = new BsonRegularExpression(dto.Query, "i");
 
                 filters.Add(
@@ -68,97 +173,58 @@ namespace eArchiveSystem.Infrastructure.Persistence.Repositories
                         Builders<Document>.Filter.Regex("Metadata.Description", text),
                         Builders<Document>.Filter.Regex("Metadata.Tags", text),
                         Builders<Document>.Filter.Regex("Metadata.Category", text),
-                         Builders<Document>.Filter.Regex("Metadata.DocumentType", text)
+                        Builders<Document>.Filter.Regex("Metadata.DocumentType", text)
                     )
                 );
             }
 
-            // ==========================================
-            // 3) Filter by Category (اختياري)
-            // ==========================================
-
             if (!string.IsNullOrEmpty(dto.Category))
-            {
-                filters.Add(Builders<Document>.Filter.Eq(d => d.Metadata.Category, dto.Category));
-            }
-
-            // ==========================================
-            // 4) Filter by Department (اختياري)
-            // ==========================================
+                filters.Add(
+                    Builders<Document>.Filter.Eq(
+                        d => d.Metadata.Category,
+                        dto.Category
+                    )
+                );
 
             if (!string.IsNullOrEmpty(dto.Department))
-            {
-                filters.Add(Builders<Document>.Filter.Eq(d => d.Department, dto.Department));
-            }
-
-            // ==========================================
-            // 5) Filter by Date Range (من / إلى)
-            // ==========================================
+                filters.Add(
+                    Builders<Document>.Filter.Eq(
+                        d => d.Department,
+                        dto.Department
+                    )
+                );
 
             if (dto.FromDate != null)
-            {
-                filters.Add(Builders<Document>.Filter.Gte(d => d.CreatedAt, dto.FromDate));
-            }
+                filters.Add(
+                    Builders<Document>.Filter.Gte(d => d.CreatedAt, dto.FromDate)
+                );
 
             if (dto.ToDate != null)
-            {
-                filters.Add(Builders<Document>.Filter.Lte(d => d.CreatedAt, dto.ToDate));
-            }
+                filters.Add(
+                    Builders<Document>.Filter.Lte(d => d.CreatedAt, dto.ToDate)
+                );
 
-            // ==========================================
-            // 6) Build Final Filter (AND)
-            // ==========================================
-
-            var filter = filters.Count > 0
+            var finalFilter = filters.Count > 0
                 ? Builders<Document>.Filter.And(filters)
                 : Builders<Document>.Filter.Empty;
 
-
-            // ==========================================
-            // 7) Sorting (الترتيب)
-            // ==========================================
-
-            SortDefinition<Document> sort;
-
-            if (dto.SortBy == "Title")
+            var sort = dto.SortBy switch
             {
-                sort = dto.Desc
+                "Title" => dto.Desc
                     ? Builders<Document>.Sort.Descending(d => d.Title)
-                    : Builders<Document>.Sort.Ascending(d => d.Title);
-            }
-            else if (dto.SortBy == "CreatedAt")
-            {
-                sort = dto.Desc
+                    : Builders<Document>.Sort.Ascending(d => d.Title),
+
+                "CreatedAt" => dto.Desc
                     ? Builders<Document>.Sort.Descending(d => d.CreatedAt)
-                    : Builders<Document>.Sort.Ascending(d => d.CreatedAt);
-            }
-            else
-            {
-                // الوضع الافتراضي — الأحدث أولًا
-                sort = Builders<Document>.Sort.Descending(d => d.CreatedAt);
-            }
+                    : Builders<Document>.Sort.Ascending(d => d.CreatedAt),
 
-
-            // ==========================================
-            // 8) Execute Query
-            // ==========================================
+                _ => Builders<Document>.Sort.Descending(d => d.CreatedAt)
+            };
 
             return await _documents
-                .Find(filter)
+                .Find(finalFilter)
                 .Sort(sort)
                 .ToListAsync();
         }
-
-        public async Task<bool> DeleteAsync(string id)
-        {
-            var result = await _documents.DeleteOneAsync(d => d.Id == id);
-            return result.DeletedCount > 0;
-        }
-        public async Task<List<Document>> GetAllAsync()
-        {
-            return await _documents.Find(_ => true).ToListAsync();
-        }
-
-
     }
 }

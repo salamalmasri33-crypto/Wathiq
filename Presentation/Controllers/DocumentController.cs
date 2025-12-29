@@ -4,6 +4,7 @@ using eArchiveSystem.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
+using System.Net.Http;
 using System.Security.Claims;
 
 namespace eArchiveSystem.Presentation.Controllers
@@ -15,15 +16,23 @@ namespace eArchiveSystem.Presentation.Controllers
         private readonly IDocumentService _documentService;
         private readonly IMetadataService _metadataService;
         private readonly ISearchService _searchService;
+        private readonly HttpClient _httpClient;
+        private readonly IWebHostEnvironment _env;
+
 
 
         public DocumentController(IDocumentService documentService,
                                   IMetadataService metadataService,
-                                   ISearchService searchService)
+                                   ISearchService searchService,
+                                    HttpClient httpClient,
+                                    IWebHostEnvironment env
+                                   )
         {
             _documentService = documentService; // Add + Get
             _metadataService = metadataService; // Metadata
             _searchService = searchService;
+            _httpClient = httpClient;
+            _env = env;
         }
 
 
@@ -39,7 +48,7 @@ namespace eArchiveSystem.Presentation.Controllers
 
             string ownerId = currentUserId; // الافتراضي
 
-            // 🔥 VALIDATION 1:
+            //  VALIDATION 1:
             // User لا يحق له استخدام TargetUserId
             if (role == "User" && !string.IsNullOrEmpty(dto.TargetUserId))
             {
@@ -57,6 +66,19 @@ namespace eArchiveSystem.Presentation.Controllers
             }
 
             var result = await _documentService.AddDocumentAsync(ownerId, dto);
+
+            await _httpClient.PostAsJsonAsync(
+ "https://localhost:7141/api/ocr/process",
+ new
+ {
+     documentId = result.Document.Id,
+     filePath = Path.Combine(_env.ContentRootPath, result.Document.FilePath),
+     callbackUrl = $"https://localhost:44302/api/ocr/callback?documentId={result.Document.Id}",
+     department = result.Document.Department
+ }
+);
+
+
 
             if (result.IsDuplicate)
             {
@@ -79,7 +101,9 @@ namespace eArchiveSystem.Presentation.Controllers
                     fileName = result.Document.FileName,
                     size = result.Document.Size
                 }
+
             });
+
         
         }
         [Authorize]
@@ -127,17 +151,22 @@ namespace eArchiveSystem.Presentation.Controllers
         [Authorize(Roles = "User,Manager")]
         [HttpDelete("{documentId}")]
         public async Task<IActionResult> DeleteDocument(string documentId)
-
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value!;
             var role = User.FindFirst(ClaimTypes.Role)?.Value!;
-            var deleted = await _documentService.DeleteDocumentAsync(documentId, userId, role);
+
+            var deleted = await _documentService.DeleteDocumentAsync(
+                documentId,
+                userId,
+                role
+            );
 
             if (!deleted)
-                return NotFound(new { message = "Document not found" });
+                return NotFound(new { message = "Document not found or access denied" });
 
             return Ok(new { message = "Document deleted successfully" });
         }
+
         [HttpGet("{id}/view")]
         [Authorize]
         public async Task<IActionResult> View(string id)

@@ -1,11 +1,9 @@
 ﻿using eArchiveSystem.Application.DTOs;
-using eArchiveSystem.Application.Interfaces.OCR;
 using eArchiveSystem.Application.Interfaces.Persistence;
 using eArchiveSystem.Application.Interfaces.Security;
 using eArchiveSystem.Application.Interfaces.Services;
 using eArchiveSystem.Application.Services;
 using eArchiveSystem.Domain.Models;
-using eArchiveSystem.Infrastructure.OCR;
 using eArchiveSystem.Infrastructure.Persistence.Data;
 using eArchiveSystem.Infrastructure.Persistence.Repositories;
 using eArchiveSystem.Infrastructure.Security;
@@ -66,12 +64,13 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
 });
 
 // Mongo Database
-builder.Services.AddSingleton<IMongoDatabase>(sp =>
+builder.Services.AddScoped<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
     var settings = sp.GetRequiredService<IOptions<MongoDBSettings>>().Value;
     return client.GetDatabase(settings.DatabaseName);
 });
+
 
 // =======================================================
 // 5) Dependency Injection
@@ -95,9 +94,9 @@ builder.Services.AddScoped<IAuditRepository, AuditRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 // OCR
-builder.Services.AddScoped<IOcrStrategy, TesseractOcrStrategy>();
-builder.Services.AddScoped<IOcrService, OcrService>();
-builder.Services.AddScoped<IPdfToImageService, PdfToImageService>();
+
+builder.Services.AddHttpClient();
+
 
 
 // IMPORTANT: enable QuestPDF free license

@@ -3,33 +3,51 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace eArchiveSystem.Domain.Models
 {
-    public class Document
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
+        public class Document
+        {
+            // MongoDB ObjectId
+            [BsonId]
+            [BsonRepresentation(BsonType.ObjectId)]
+            public string Id { get; set; }
 
-        public int DocumentId { get; set; }          // من ال Class Diagram
-        public string Title { get; set; }            // title
+            // Document title
+            public string Title { get; set; }
 
-        public string? Content { get; set; }         //  OCR Text (nullable)
-        public string FilePath { get; set; }         //  مسار الملف على السيرفر
+            // OCR extracted text (optional)
+            public string? Content { get; set; }
 
-        public string FileName { get; set; }         // اسم الملف الأصلي
-        public string ContentType { get; set; }      // application/pdf
-        public long Size { get; set; }               // الحجم بالبايت
+            // File path on the server
+            public string FilePath { get; set; }
 
-        public string FileHash { get; set; }         // Duplication Handling
+            // Original file name
+            public string FileName { get; set; }
 
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+            // File MIME type (e.g. application/pdf)
+            public string ContentType { get; set; }
 
-        public string UserId { get; set; }           // صاحب الوثيقة
-        public string Department { get; set; }
+            // File size in bytes
+            public long Size { get; set; }
 
-        public Metadata? Metadata { get; set; }
+            // File hash (duplicate detection)
+            public string FileHash { get; set; }
 
-        [BsonIgnore]
-        public string? OwnerName { get; set; }
+            // Creation & last update timestamps
+            public DateTime CreatedAt { get; set; }
+            public DateTime UpdatedAt { get; set; }
+
+            // Owner user ID
+            public string UserId { get; set; }
+
+            // Department the document belongs to
+            public string Department { get; set; }
+
+            // Embedded metadata (synced with Metadata collection)
+            [BsonElement("Metadata")]
+            public Metadata? Metadata { get; set; }
+
+            // Owner name (for view only – not stored in DB)
+            [BsonIgnore]
+            public string? OwnerName { get; set; }
+        }
     }
-}
+
