@@ -3,12 +3,13 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace eArchiveSystem.Domain.Models
 {
-        public class Document
+    [BsonIgnoreExtraElements]
+    public class Document
         {
             // MongoDB ObjectId
             [BsonId]
             [BsonRepresentation(BsonType.ObjectId)]
-            public string Id { get; set; }
+            public string Id { get; set; } 
 
             // Document title
             public string Title { get; set; }

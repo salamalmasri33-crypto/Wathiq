@@ -3,6 +3,9 @@ using eArchiveSystem.Application.Interfaces.Persistence;
 using eArchiveSystem.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using eArchiveSystem.Application.Interfaces.Services;
+using eArchiveSystem.Application.Services;
+
 
 namespace eArchiveSystem.Presentation.Controllers
 {
@@ -12,52 +15,48 @@ namespace eArchiveSystem.Presentation.Controllers
     {
         private readonly IDocumentRepository _documents;
         private readonly IMetadataRepository _metadata;
+        private readonly IMetadataExtractionService _extractor;
 
         public OcrCallbackController(
             IDocumentRepository documents,
-            IMetadataRepository metadata)
+            IMetadataRepository metadata,
+              IMetadataExtractionService extractor)
         {
             _documents = documents;
             _metadata = metadata;
+            _extractor = extractor;
         }
-            [AllowAnonymous]
-            [HttpPost("callback")]
-            public async Task<IActionResult> ReceiveResult(
-                [FromQuery] string documentId,
-                [FromBody] OcrResultDto result)
-            {
-                var doc = await _documents.GetByIdAsync(documentId);
-                if (doc == null)
-                    return NotFound();
+        [AllowAnonymous]
+        [HttpPost("callback")]
+        public async Task<IActionResult> ReceiveResult(
+[FromQuery] string documentId,
+[FromBody] OcrResultDto result)
+        {
+            var doc = await _documents.GetByIdAsync(documentId);
+            if (doc == null)
+                return NotFound();
 
-                // 1️⃣ Save metadata in Metadata collection
-                var metadata = new Metadata
-                {
-                    Id = documentId,
-                    Description = null,
-                    Category = result.Category,
-                    DocumentType = result.DocumentType,
-                    Tags = result.Tags,
-                    Department = result.Department,
-                    ExpirationDate = result.ExpirationDate,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+            // 1️⃣ خزّن OCR text فقط
+            await _documents.UpdateContentAsync(
+                documentId,
+                result.Text,
+                doc.Department
+            );
 
-                await _metadata.UpsertAsync(metadata);
+            // 2️⃣ استخرج Metadata من النص
+            var extractedMeta = _extractor.Extract(
+                documentId,
+                result.Text,
+                doc.Department
+            );
 
-                // 2️⃣ Embed metadata into Document
-                await _documents.AttachMetadataAsync(documentId);
+            // 3️⃣ خزّن Metadata
+            await _metadata.UpsertAsync(extractedMeta);
 
-                // 3️⃣ Update OCR content ONLY (no replace)
-                await _documents.UpdateContentAsync(
-                    documentId,
-                    result.Text,
-                    result.Department
-                );
+            // 4️⃣ اربط Metadata بالوثيقة
+            await _documents.AttachMetadataAsync(documentId);
 
-                return Ok("OCR processed successfully");
-            }
+            return Ok("OCR processed successfully");
         }
-
     }
+}

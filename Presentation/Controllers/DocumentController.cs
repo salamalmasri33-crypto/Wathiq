@@ -68,15 +68,15 @@ namespace eArchiveSystem.Presentation.Controllers
             var result = await _documentService.AddDocumentAsync(ownerId, dto);
 
             await _httpClient.PostAsJsonAsync(
- "https://localhost:7141/api/ocr/process",
- new
- {
-     documentId = result.Document.Id,
-     filePath = Path.Combine(_env.ContentRootPath, result.Document.FilePath),
-     callbackUrl = $"https://localhost:44302/api/ocr/callback?documentId={result.Document.Id}",
-     department = result.Document.Department
- }
-);
+              "https://localhost:7141/api/ocr/process",
+                   new
+                     {
+                    documentId = result.Document.Id,
+                    filePath = Path.Combine(_env.ContentRootPath, result.Document.FilePath),
+                    callbackUrl = $"https://localhost:44302/api/ocr/callback?documentId={result.Document.Id}",
+                    department = result.Document.Department
+                       }
+                        );
 
 
 
@@ -211,7 +211,14 @@ namespace eArchiveSystem.Presentation.Controllers
             var meta = await _metadataService.ViewMetadataAsync(id, userId, role);
 
             if (meta == null)
-                return Forbid();
+            {
+                return Accepted(new
+                {
+                    status = "processing",
+                    message = "OCR is still processing"
+                });
+            }
+
 
             return Ok(meta);
         }
