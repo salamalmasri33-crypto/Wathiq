@@ -23,7 +23,7 @@ Requirements:
 Steps:
 ```bash
 cd eArchiveSystem
-dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
+dotnet restore
 dotnet run
 ```
 
@@ -35,9 +35,11 @@ Requirements:
 Steps:
 ```bash
 cd eArchive.OcrService
-dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
+dotnet restore 
 dotnet run
 ```
+#note:dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
+
 ### Frontend 
 The frontend is implemented in a separate branch within the same repository.
 Requirements:
@@ -53,4 +55,5 @@ npm run dev
 ## Documentation
 
  **Final Project Report (PDF):**  
-  [docs/Wathiq_Final_Report.pdf](docs/Wathiq_Final_Report.pdf) 
+  [Project Report (PDF)](docs/Wathiq_Final_Report.pdf)
+
