@@ -54,6 +54,7 @@ npm run dev
 ```
 ## Documentation
 
- **Final Project Report (PDF):**  
-  [Project Report (PDF)](docs/Wathiq_Final_Report.pdf)
+ **Final Project Report (PDF):**    
+[Download Final Report](docs/Report%20Wathiq.pdf)
+
 
