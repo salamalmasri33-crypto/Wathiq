@@ -26,7 +26,7 @@ cd eArchiveSystem
 dotnet restore
 dotnet run
 ```
-###note:dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
+note:dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
 
 ### OCR Microservice (eArchive.OcrService)
 Requirements:
