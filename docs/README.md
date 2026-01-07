@@ -26,6 +26,7 @@ cd eArchiveSystem
 dotnet restore
 dotnet run
 ```
+###note:dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
 
 ### OCR Microservice (eArchive.OcrService)
 Requirements:
@@ -38,8 +39,6 @@ cd eArchive.OcrService
 dotnet restore 
 dotnet run
 ```
-#note:dotnet restore (downloads all required NuGet packages defined in the project file so the application can build and run correctly.)
-
 ### Frontend 
 The frontend is implemented in a separate branch within the same repository.
 Requirements:
