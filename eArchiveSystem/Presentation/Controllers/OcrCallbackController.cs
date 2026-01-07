@@ -3,6 +3,7 @@ using eArchiveSystem.Application.Interfaces.Persistence;
 using eArchiveSystem.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using eArchiveSystem.Application.Interfaces.Services;
 
 namespace eArchiveSystem.Presentation.Controllers
 {
@@ -12,39 +13,52 @@ namespace eArchiveSystem.Presentation.Controllers
     {
         private readonly IDocumentRepository _documents;
         private readonly IMetadataRepository _metadata;
+        private readonly IRuleBasedAnalyzer _analyzer;
+
 
         public OcrCallbackController(
             IDocumentRepository documents,
-            IMetadataRepository metadata)
+            IMetadataRepository metadata,
+             IRuleBasedAnalyzer analyzer)
         {
             _documents = documents;
             _metadata = metadata;
+            _analyzer = analyzer;
         }
             [AllowAnonymous]
             [HttpPost("callback")]
             public async Task<IActionResult> ReceiveResult(
                 [FromQuery] string documentId,
-                [FromBody] OcrResultDto result)
+                [FromBody] OcrCallbackDto result)
             {
+
                 var doc = await _documents.GetByIdAsync(documentId);
                 if (doc == null)
                     return NotFound();
 
-                // 1️⃣ Save metadata in Metadata collection
-                var metadata = new Metadata
-                {
-                    Id = documentId,
-                    Description = result.Description,
-                    Category = result.Category,
-                    DocumentType = result.DocumentType,
-                    Tags = result.Tags,
-                    Department = result.Department,
-                    ExpirationDate = result.ExpirationDate,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+            var description = _analyzer.ExtractDescription(result.Text);
+            var tags = _analyzer.ExtractKeywords(result.Text);
+            var category = _analyzer.DetectCategory(result.Text);
+            var documentType = _analyzer.DetectDocumentType(result.Text);
 
-                await _metadata.UpsertAsync(metadata);
+
+            // 1️⃣ Save metadata in Metadata collection
+            
+                    var metadata = new Metadata
+{
+    Id = documentId,
+    Description = description,
+    Category = category,
+    DocumentType = documentType,
+    Tags = tags,
+    Department = doc.Department,
+    CreatedAt = DateTime.UtcNow,
+    UpdatedAt = DateTime.UtcNow
+};
+
+               
+
+                await _metadata.UpsertAsync(metadata); 
 
                 // 2️⃣ Embed metadata into Document
                 await _documents.AttachMetadataAsync(documentId);
@@ -53,7 +67,7 @@ namespace eArchiveSystem.Presentation.Controllers
                 await _documents.UpdateContentAsync(
                     documentId,
                     result.Text,
-                    result.Department
+                    doc.Department
                 );
 
                 return Ok("OCR processed successfully");

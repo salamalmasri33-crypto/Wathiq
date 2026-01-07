@@ -92,6 +92,8 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IAuditRepository, AuditRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IRuleBasedAnalyzer, RuleBasedAnalyzer>();
+
 
 // OCR
 

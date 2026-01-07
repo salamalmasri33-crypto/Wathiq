@@ -13,7 +13,7 @@ namespace eArchive.OcrService.Controllers
         private readonly OcrProcessor _processor;
         private readonly HttpClient _httpClient;
 
-        public OcrController(OcrProcessor processor)
+        public OcrController(OcrProcessor processor) 
         {
             _processor = processor;
 
@@ -23,7 +23,7 @@ namespace eArchive.OcrService.Controllers
                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             };
 
-            _httpClient = new HttpClient(handler);
+            _httpClient = new HttpClient(handler); 
         }
 
         [HttpPost("process")]
@@ -38,6 +38,7 @@ namespace eArchive.OcrService.Controllers
             if (string.IsNullOrWhiteSpace(dto.CallbackUrl))
                 return BadRequest("CallbackUrl is missing");
 
+            //يلي هو مركز التحكم (OcrProcessor.cs) عم ينادي ال
             var result = await _processor.ProcessAsync(dto);
 
             await _httpClient.PostAsJsonAsync(dto.CallbackUrl, result);

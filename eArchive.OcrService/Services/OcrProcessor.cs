@@ -22,9 +22,9 @@ namespace eArchive.OcrService.Services
         {
             var images = new List<string>();
 
-            var extension = Path.GetExtension(dto.FilePath).ToLowerInvariant();
-
             // 1️⃣ تحديد نوع الملف
+            var extension = Path.GetExtension(dto.FilePath).ToLowerInvariant();
+           
             if (extension == ".pdf")
             {
                 // PDF → Images
@@ -43,7 +43,7 @@ namespace eArchive.OcrService.Services
                 throw new Exception("Unsupported file type for OCR");
             }
 
-            // 2️⃣ OCR
+            // 2️⃣ (OCR)  Images → Text 
             var text = await _ocrStrategy.ProcessAsync(images);
 
             // 3️⃣ رجّع فقط OCR Text (بدون Metadata ذكية)
