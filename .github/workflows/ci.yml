@@ -9,13 +9,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Run Tests
+      - name: Run test
         run: echo "Running tests..."
 
-      - name: Run GitLeaks Scan
+      - name: Run GitLeaks
         run: |
           wget -qO gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.18.0_linux_x64.tar.gz
           tar -xzf gitleaks.tar.gz
