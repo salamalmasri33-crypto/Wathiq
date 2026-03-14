@@ -12,17 +12,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Test (placeholder)
+      - name: Run Test
         run: echo "Running tests..."
 
-      - name: Run GitLeaks Scan
+      - name: Run GitLeaks
         run: |
+          echo "Running GitLeaks scan..."
           wget -qO gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.18.0_linux_x64.tar.gz
           tar -xzf gitleaks.tar.gz
           ./gitleaks detect --source . -v || true
 
-      - name: Build Step
+      - name: Build
         run: echo "Building..."
 
-      - name: Deploy Step
+      - name: Deploy
         run: echo "Deploying..."
