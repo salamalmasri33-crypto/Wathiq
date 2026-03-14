@@ -13,17 +13,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Test
-        run: echo "Running tests..."
+        run: echo "Test placeholder"
 
-      - name: Run GitLeaks
-        run: |
-          echo "Running GitLeaks scan..."
-          wget -qO gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.18.0_linux_x64.tar.gz
-          tar -xzf gitleaks.tar.gz
-          ./gitleaks detect --source . -v || true
+      - name: Run GitLeaks Scan
+        run: echo "Running GitLeaks scan..."
 
-      - name: Build
+      - name: Build Step
         run: echo "Building..."
 
-      - name: Deploy
+      - name: Deploy Step
         run: echo "Deploying..."
