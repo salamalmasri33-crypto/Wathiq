@@ -22,3 +22,7 @@ Thumbs.db
 
 # Uploads (optional if large)
 uploads/
+
+# Test output
+TestResults/
+coverage/

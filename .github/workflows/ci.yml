@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore eArchiveSystem/eArchiveSystem.sln
+
+      - name: Placeholder build step
+        run: echo "Building the solution in CI..."
+
+      - name: Build solution
+        run: dotnet build eArchiveSystem/eArchiveSystem.sln --no-restore --configuration Release
+
+      - name: Run placeholder test
+        run: dotnet test tests/eArchiveSystem.Tests/eArchiveSystem.Tests.csproj --configuration Release
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
