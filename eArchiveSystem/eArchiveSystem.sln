@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RepositoryFiles", "Reposito
 		..\scripts\setup-git-hooks.ps1 = ..\scripts\setup-git-hooks.ps1
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eArchiveSystem.IntegrationTests", "..\tests\eArchiveSystem.IntegrationTests\eArchiveSystem.IntegrationTests.csproj", "{25CF1E1E-E633-4108-BEEE-673D1D27049E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,18 @@ Global
 		{DBA6377C-F00C-4C92-8D8E-E073CC2C3E89}.Release|x64.Build.0 = Release|Any CPU
 		{DBA6377C-F00C-4C92-8D8E-E073CC2C3E89}.Release|x86.ActiveCfg = Release|Any CPU
 		{DBA6377C-F00C-4C92-8D8E-E073CC2C3E89}.Release|x86.Build.0 = Release|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Debug|x64.Build.0 = Debug|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Debug|x86.Build.0 = Debug|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Release|x64.ActiveCfg = Release|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Release|x64.Build.0 = Release|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Release|x86.ActiveCfg = Release|Any CPU
+		{25CF1E1E-E633-4108-BEEE-673D1D27049E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

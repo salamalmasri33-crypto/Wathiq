@@ -12,6 +12,8 @@ obj/
 # Rider / VSCode
 .idea/
 .vscode/
+node_modules/
+frontend-app/
 
 # OS
 .DS_Store
@@ -22,7 +24,13 @@ Thumbs.db
 
 # Uploads (optional if large)
 uploads/
+.data-protection-keys/
 
 # Test output
 TestResults/
 coverage/
+test-results/
+playwright-report/
+blob-report/
+artifacts/
+.npm-cache/

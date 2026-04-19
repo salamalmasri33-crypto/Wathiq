@@ -8,6 +8,7 @@ using eArchiveSystem.Infrastructure.Persistence.Data;
 using eArchiveSystem.Infrastructure.Persistence.Repositories;
 using eArchiveSystem.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -15,13 +16,37 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
-using QuestPDF.Infrastructure;
 using System.Text;
 
 // =======================================================
 // 1) Create Builder
 // =======================================================
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.ConfigureLogging(logging =>
+{
+    logging.ClearProviders();
+    logging.AddConsole();
+    logging.AddDebug();
+});
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var dataProtectionKeysDirectory = new DirectoryInfo(
+    Path.Combine(builder.Environment.ContentRootPath, ".data-protection-keys")
+);
+
+if (!dataProtectionKeysDirectory.Exists)
+{
+    dataProtectionKeysDirectory.Create();
+}
+
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(dataProtectionKeysDirectory)
+    .SetApplicationName("Wathiq");
 
 // =======================================================
 // 2) Controllers + Swagger
@@ -139,12 +164,26 @@ builder.Services
 // =======================================================
 // 7) Enable CORS
 // =======================================================
+var allowedCorsOrigins =
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[]
+    {
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4180",
+        "http://127.0.0.1:4180",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:8080") // رابط الفرونت
+            policy.WithOrigins(allowedCorsOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -162,7 +201,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var service = scope.ServiceProvider.GetRequiredService<IUserService>();
-    await service.CreateBootstrapAdminIfNotExists();
+    await service.CreateBootstrapAdminIfNotExists(); 
 }
 
 // =======================================================
@@ -182,7 +221,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHttpsRedirection();
+}
 
 // 🔗 استخدم CORS قبل الـAuth
 app.UseCors("AllowFrontend");
@@ -193,3 +235,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 await app.RunAsync();
+
+public partial class Program
+{
+}

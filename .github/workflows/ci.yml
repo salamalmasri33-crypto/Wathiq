@@ -5,10 +5,18 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 jobs:
-  build-test-scan:
+  backend-quality:
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      WATHIQ_TEST_MONGODB_CONNECTION: mongodb://localhost:27017
 
     steps:
       - name: Checkout repository
@@ -30,11 +38,184 @@ jobs:
       - name: Build solution
         run: dotnet build eArchiveSystem/eArchiveSystem.sln --no-restore --configuration Release
 
-      - name: Run automated tests
-        run: dotnet test tests/eArchiveSystem.Tests/eArchiveSystem.Tests.csproj --configuration Release --no-restore
+      - name: Run unit tests
+        run: >
+          dotnet test tests/eArchiveSystem.Tests/eArchiveSystem.Tests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory TestResults/Unit
+
+      - name: Run integration tests
+        run: >
+          dotnet test tests/eArchiveSystem.IntegrationTests/eArchiveSystem.IntegrationTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory TestResults/Integration
 
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+
+  e2e-playwright:
+    runs-on: ubuntu-latest
+    needs: backend-quality
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ASPNETCORE_URLS: http://127.0.0.1:5005
+      MongoDB__ConnectionString: mongodb://localhost:27017
+      MongoDB__DatabaseName: WathiqE2E
+      WATHIQ_API_BASE_URL: http://127.0.0.1:5005/api
+      WATHIQ_TEST_EMAIL: admin@example.com
+      WATHIQ_TEST_PASSWORD: Admin@123
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch frontend branch
+        run: git fetch origin Wathiq_Frontend:refs/remotes/origin/Wathiq_Frontend
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Materialize frontend snapshot
+        shell: pwsh
+        run: ./scripts/setup-frontend-snapshot.ps1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            frontend-app/package-lock.json
+            tests/e2e/package-lock.json
+
+      - name: Restore backend
+        run: dotnet restore eArchiveSystem/eArchiveSystem.csproj
+
+      - name: Build backend
+        run: dotnet build eArchiveSystem/eArchiveSystem.csproj --configuration Release --no-restore
+
+      - name: Install frontend dependencies
+        working-directory: frontend-app
+        run: npm ci
+
+      - name: Install Playwright dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend
+        run: |
+          dotnet run --no-build --no-launch-profile --project eArchiveSystem/eArchiveSystem.csproj --configuration Release > backend.log 2>&1 &
+
+      - name: Wait for backend
+        run: |
+          for i in {1..30}; do
+            curl --silent --fail --request POST http://127.0.0.1:5005/api/auth/logout > /dev/null && exit 0
+            sleep 2
+          done
+          cat backend.log
+          exit 1
+
+      - name: Run Playwright E2E
+        working-directory: tests/e2e
+        run: npx playwright test --reporter=line
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            tests/e2e/playwright-report
+            tests/e2e/test-results
+            backend.log
+
+  performance-smoke:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      ASPNETCORE_ENVIRONMENT: Testing
+      ASPNETCORE_URLS: http://127.0.0.1:5005
+      MongoDB__ConnectionString: mongodb://localhost:27017
+      MongoDB__DatabaseName: WathiqPerformance
+      WATHIQ_API_BASE_URL: http://127.0.0.1:5005/api
+      WATHIQ_TEST_EMAIL: admin@example.com
+      WATHIQ_TEST_PASSWORD: Admin@123
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore backend
+        run: dotnet restore eArchiveSystem/eArchiveSystem.csproj
+
+      - name: Build backend
+        run: dotnet build eArchiveSystem/eArchiveSystem.csproj --configuration Release --no-restore
+
+      - name: Start backend
+        run: |
+          dotnet run --no-build --no-launch-profile --project eArchiveSystem/eArchiveSystem.csproj --configuration Release > backend.log 2>&1 &
+
+      - name: Wait for backend
+        run: |
+          for i in {1..30}; do
+            curl --silent --fail --request POST http://127.0.0.1:5005/api/auth/logout > /dev/null && exit 0
+            sleep 2
+          done
+          cat backend.log
+          exit 1
+
+      - name: Run k6 performance flow
+        run: |
+          docker run --rm --network host \
+            -w /workspace \
+            -v "${{ github.workspace }}:/workspace" \
+            -e WATHIQ_API_BASE_URL="${WATHIQ_API_BASE_URL}" \
+            -e WATHIQ_TEST_EMAIL="${WATHIQ_TEST_EMAIL}" \
+            -e WATHIQ_TEST_PASSWORD="${WATHIQ_TEST_PASSWORD}" \
+            grafana/k6 run tests/performance/k6/login-and-search.js
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: |
+            tests/performance/results
+            backend.log
