@@ -20,6 +20,10 @@ Wathiq is a document archiving system that digitizes documents, extracts text th
 - Tesseract OCR if you want to run the OCR service manually
 - k6 if you want to execute the included performance script
 
+## Local secrets
+
+Sensitive values should not be committed to the repository. If you need real SMTP settings for password-reset or email-based flows, provide them through environment variables or `.NET user-secrets` instead of editing tracked configuration files.
+
 ## Running the backend
 
 ### Main backend
