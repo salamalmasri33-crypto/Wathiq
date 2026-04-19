@@ -1,9 +1,13 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
+
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFilePath);
 
 const frontendDir =
   process.env.WATHIQ_FRONTEND_DIR
-  ?? path.resolve(__dirname, '../../frontend-app');
+  ?? path.resolve(currentDir, '../../frontend-app');
 const frontendBaseUrl =
   process.env.WATHIQ_FRONTEND_BASE_URL
   ?? 'http://127.0.0.1:4173';
