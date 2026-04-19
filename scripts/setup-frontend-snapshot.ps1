@@ -1,8 +1,13 @@
 $ErrorActionPreference = "Stop"
 
 $frontendPath = "frontend-app"
-$archivePath = Join-Path $env:TEMP "wathiq-frontend.tar"
-$apiConfigPath = Join-Path $frontendPath "src\\config\\api.ts"
+$tempRoot =
+    if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP }
+    elseif ($env:TEMP) { $env:TEMP }
+    else { [System.IO.Path]::GetTempPath() }
+
+$archivePath = Join-Path $tempRoot "wathiq-frontend.tar"
+$apiConfigPath = Join-Path (Join-Path (Join-Path $frontendPath "src") "config") "api.ts"
 
 if (Test-Path $frontendPath) {
     Remove-Item -Recurse -Force $frontendPath
