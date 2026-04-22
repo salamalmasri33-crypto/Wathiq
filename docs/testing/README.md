@@ -6,8 +6,8 @@ Current scope:
 - `tests/eArchiveSystem.Tests`: unit tests for backend business logic and security helpers.
 - `tests/eArchiveSystem.IntegrationTests`: API-level integration tests that exercise the real ASP.NET Core application against MongoDB.
 - `tests/performance`: performance and load test assets.
-- `tests/e2e`: browser-based end-to-end tests for the frontend, executed locally with `scripts/run-e2e.ps1`.
-- `docs/testing/performance-optimization-case-study.md`: documented bonus case study for the search optimization.
+- `tests/e2e`: browser-based end-to-end tests for login/dashboard and a full upload/save/search document flow, executed locally with `scripts/run-e2e.ps1`.
+- `docs/testing/performance-optimization-case-study.md`: documented bonus case study for the search optimization with measurable before/after evidence.
 
 Expected deliverables for the assignment:
 - Meaningful unit tests

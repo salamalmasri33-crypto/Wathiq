@@ -103,6 +103,8 @@ cd ..\..
 powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1
 ```
 
+The Playwright suite covers both an authenticated login/dashboard flow and a full user document flow: upload a file, save metadata, search for the document, and verify the created result from the UI.
+
 Environment variables you can override:
 
 - `WATHIQ_FRONTEND_DIR`
@@ -118,7 +120,7 @@ The pipeline is split into visible dependent jobs: GitLeaks secret scanning, cod
 
 ## Bonus Performance Case Study
 
-The optional performance optimization case study is documented in `docs/testing/performance-optimization-case-study.md`. It focuses on reducing search-response payload size by projecting lightweight search DTOs instead of returning full document entities.
+The optional performance optimization case study is documented in `docs/testing/performance-optimization-case-study.md`. It focuses on reducing search-response payload size by projecting lightweight search DTOs instead of returning full document entities. The case study includes reproducible before/after evidence from an integration test, including payload-size reduction and measured response time.
 
 ## In-Session Practical
 

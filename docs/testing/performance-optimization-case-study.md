@@ -36,7 +36,7 @@ At the repository level, the MongoDB query now projects directly into the lightw
 
 ### A. Existing k6 baseline
 
-From [tests/performance/results/summary.md](/Users/LENOVO/Desktop/project_testing/tests/performance/results/summary.md):
+From [tests/performance/results/summary.md](../../tests/performance/results/summary.md):
 
 - Load profile: 5 virtual users for 30 seconds
 - Average response time: `19.34 ms`
@@ -49,7 +49,7 @@ This baseline showed the flow was stable, but it did not expose the hidden paylo
 ### B. Isolated optimization evidence
 
 Measured with the integration test:
-[SearchPerformanceEvidenceTests.cs](/Users/LENOVO/Desktop/project_testing/tests/eArchiveSystem.IntegrationTests/Documents/SearchPerformanceEvidenceTests.cs)
+[SearchPerformanceEvidenceTests.cs](../../tests/eArchiveSystem.IntegrationTests/Documents/SearchPerformanceEvidenceTests.cs)
 
 Test setup:
 

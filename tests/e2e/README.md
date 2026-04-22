@@ -2,8 +2,9 @@
 
 Wathiq E2E coverage is implemented with Playwright in this directory.
 
-Current scenario:
+Current scenarios:
 - admin login through the real frontend UI and redirect to the protected dashboard
+- user document flow through the real frontend UI: upload a file, save metadata, search for the document, and verify the created result
 
 Recommended setup:
 1. Materialize the frontend branch into a local snapshot:
