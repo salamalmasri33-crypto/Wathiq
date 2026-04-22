@@ -95,7 +95,8 @@ public sealed class IntegrationWebApplicationFactory : WebApplicationFactory<Pro
         string title,
         string department = "IT",
         Metadata? metadata = null,
-        string? fileHash = null)
+        string? fileHash = null,
+        string? content = null)
     {
         using var scope = Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
@@ -104,6 +105,7 @@ public sealed class IntegrationWebApplicationFactory : WebApplicationFactory<Pro
         var document = new Document
         {
             Title = title,
+            Content = content,
             FileName = $"{title}.pdf",
             FilePath = $"uploads/{Guid.NewGuid():N}.pdf",
             ContentType = "application/pdf",

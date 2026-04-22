@@ -21,7 +21,7 @@ namespace eArchiveSystem.Application.Interfaces.Persistence
         Task UpdateAsync(string id, Document document);
 
         // Advanced search (text + metadata + role)
-        Task<List<Document>> SearchAsync(
+        Task<SearchDocumentsResponseDto> SearchAsync(
             SearchDocumentsDto dto,
             string userId,
             string role

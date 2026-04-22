@@ -18,6 +18,7 @@ export const options = {
 function buildSummary(data) {
   return {
     checks: data.metrics.checks,
+    data_received: data.metrics.data_received,
     http_req_duration: data.metrics.http_req_duration,
     http_req_failed: data.metrics.http_req_failed,
     iterations: data.metrics.iterations,

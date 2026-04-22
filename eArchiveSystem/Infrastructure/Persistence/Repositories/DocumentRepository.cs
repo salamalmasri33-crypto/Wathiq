@@ -152,7 +152,7 @@ namespace eArchiveSystem.Infrastructure.Persistence.Repositories
         // =========================================================
         // SEARCH (كما هو – بدون تغيير)
         // =========================================================
-        public async Task<List<Document>> SearchAsync(
+        public async Task<SearchDocumentsResponseDto> SearchAsync(
             SearchDocumentsDto dto,
             string userId,
             string role
@@ -221,10 +221,41 @@ namespace eArchiveSystem.Infrastructure.Persistence.Repositories
                 _ => Builders<Document>.Sort.Descending(d => d.CreatedAt)
             };
 
-            return await _documents
+            var total = await _documents.CountDocumentsAsync(finalFilter);
+
+            var items = await _documents
                 .Find(finalFilter)
                 .Sort(sort)
+                .Project(document => new SearchDocumentItemDto
+                {
+                    Id = document.Id,
+                    Title = document.Title,
+                    FileName = document.FileName,
+                    ContentType = document.ContentType,
+                    Size = document.Size,
+                    CreatedAt = document.CreatedAt,
+                    UpdatedAt = document.UpdatedAt,
+                    OwnerId = document.UserId,
+                    Department = document.Department,
+                    Metadata = document.Metadata == null
+                        ? null
+                        : new SearchDocumentMetadataDto
+                        {
+                            Description = document.Metadata.Description,
+                            Category = document.Metadata.Category,
+                            Tags = document.Metadata.Tags,
+                            Department = document.Metadata.Department,
+                            DocumentType = document.Metadata.DocumentType,
+                            ExpirationDate = document.Metadata.ExpirationDate
+                        }
+                })
                 .ToListAsync();
+
+            return new SearchDocumentsResponseDto
+            {
+                Items = items,
+                Total = total
+            };
         }
     }
 }

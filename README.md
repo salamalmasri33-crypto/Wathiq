@@ -114,7 +114,11 @@ Environment variables you can override:
 ## CI
 
 GitHub Actions is configured in `.github/workflows/ci.yml`.
-The pipeline restores dependencies, builds the solution, runs unit tests, runs integration tests against MongoDB, runs Playwright E2E against the frontend snapshot, and executes GitLeaks.
+The pipeline is split into visible dependent jobs: GitLeaks secret scanning, code quality/build, unit tests, integration tests against MongoDB, Playwright E2E tests, k6 performance smoke testing, and a placeholder build/deploy stage.
+
+## Bonus Performance Case Study
+
+The optional performance optimization case study is documented in `docs/testing/performance-optimization-case-study.md`. It focuses on reducing search-response payload size by projecting lightweight search DTOs instead of returning full document entities.
 
 ## In-Session Practical
 

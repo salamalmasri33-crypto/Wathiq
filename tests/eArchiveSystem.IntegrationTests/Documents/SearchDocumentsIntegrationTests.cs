@@ -1,5 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using eArchiveSystem.Application.DTOs;
 using eArchiveSystem.Domain.Models;
 using eArchiveSystem.IntegrationTests.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -21,7 +23,7 @@ public class SearchDocumentsIntegrationTests : IClassFixture<IntegrationWebAppli
     }
 
     [Fact]
-    public async Task Search_AsRegularUser_ReturnsOnlyOwnedMatchingDocuments()
+    public async Task Search_AsRegularUser_ReturnsOnlyOwnedMatchingDocuments_AndOmitsHeavyContentPayload()
     {
         await _factory.ResetDatabaseAsync();
 
@@ -39,7 +41,8 @@ public class SearchDocumentsIntegrationTests : IClassFixture<IntegrationWebAppli
                 Tags = new List<string> { "finance", "quarterly" },
                 Department = "Finance"
             },
-            department: "Finance");
+            department: "Finance",
+            content: new string('A', 12_000));
 
         await _factory.SeedDocumentAsync(
             userId: otherUser.Id,
@@ -64,11 +67,15 @@ public class SearchDocumentsIntegrationTests : IClassFixture<IntegrationWebAppli
 
         searchResponse.EnsureSuccessStatusCode();
 
-        var documents = await searchResponse.Content.ReadFromJsonAsync<List<Document>>();
+        var json = await searchResponse.Content.ReadAsStringAsync();
+        var documents = JsonSerializer.Deserialize<SearchDocumentsResponseDto>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         Assert.NotNull(documents);
-        Assert.Single(documents!);
-        Assert.Equal(owner.Id, documents[0].UserId);
-        Assert.Equal("Quarterly Finance Report", documents[0].Title);
+        Assert.DoesNotContain("\"content\":", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, documents!.Total);
+        Assert.Single(documents.Items);
+        Assert.Equal(owner.Id, documents.Items[0].OwnerId);
+        Assert.Equal("Quarterly Finance Report", documents.Items[0].Title);
+        Assert.Equal("Finance", documents.Items[0].Metadata?.Category);
     }
 }

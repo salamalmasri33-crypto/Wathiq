@@ -5,6 +5,7 @@ Wathiq performance tests are implemented with `k6`.
 Current scope:
 - `k6/login-and-search.js`: authenticates against the backend and exercises the protected document search API.
 - `results/`: stores generated summaries that can be attached to the assignment submission.
+- `../docs/testing/performance-optimization-case-study.md`: bonus performance optimization write-up for the search endpoint.
 
 Suggested local run:
 
